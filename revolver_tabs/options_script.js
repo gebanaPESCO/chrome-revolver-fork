@@ -11,17 +11,18 @@ function addEventListeners(){
 //Base options code
 function saveBaseOptions(callback) {
     var appSettings = {},
-        status = document.getElementById("status");
+        statusEl = document.getElementById("status");
     appSettings.seconds = document.getElementById("seconds").value;
     bg.timeDelay = (document.getElementById("seconds").value*1000);
-    getCheckedStatus(appSettings, "reload");
+    bg.loginTimeout = (document.getElementById("loginTimeout").value*1000);
     getCheckedStatus(appSettings, "inactive");
     getCheckedStatus(appSettings, "autostart");
+    appSettings.loginTimeout = parseInt(document.getElementById("loginTimeout").value);
     appSettings.noRefreshList = document.getElementById('noRefreshList').value.split('\n');
     bg.noRefreshList = document.getElementById('noRefreshList').value.split('\n');  
-    status.innerHTML = "OPTIONS SAVED";
+    statusEl.innerHTML = "OPTIONS SAVED";
     setTimeout(function() {
-        status.innerHTML = "";
+        statusEl.innerHTML = "";
   }, 1000);
   localStorage["revolverSettings"] = JSON.stringify(appSettings);
   callback();
@@ -41,17 +42,18 @@ function restoreOptions() {
     var appSettings = {};
     if (localStorage["revolverSettings"]) appSettings = JSON.parse(localStorage["revolverSettings"]);
         document.getElementById("seconds").value = (appSettings.seconds || 10);
+        document.getElementById("loginTimeout").value = (appSettings.loginTimeout || 5);
         document.getElementById("reload").checked = (appSettings.reload || false);
         document.getElementById("inactive").checked = (appSettings.inactive || false);
         document.getElementById("autostart").checked = (appSettings.autostart || false);
         if(appSettings.noRefreshList && appSettings.noRefreshList.length > 0){
             for(var i=0;i<appSettings.noRefreshList.length;i++){
                 if(appSettings.noRefreshList[i]!= ""){
-                    document.getElementById("noRefreshList").value += (appSettings.noRefreshList[i]+"\n");    
+                    document.getElementById("noRefreshList").value += (appSettings.noRefreshList[i]+"\n");
                 };
             };
         } else {
-            document.getElementById("noRefreshList").value = "";    
+            document.getElementById("noRefreshList").value = "";
         }
 }
 
@@ -59,25 +61,44 @@ function restoreOptions() {
 function saveAdvancedOptions(callback){
     var advUrlObjectArray = [],
         advancedSettings = document.getElementById("adv-settings"),
-        advancedDivs = advancedSettings.getElementsByTagName("div"),
-        status = document.getElementById("status3"),
-        divInputTags;
+        advancedDivs = advancedSettings.querySelectorAll(".settings");
+        statusEl = document.getElementById("status3");
         for(var i = 0, checkboxes=0;i<advancedDivs.length;i++){
            if(advancedDivs[i].getElementsByClassName("enable")[0].checked == true){
-               divInputTags = advancedDivs[i].getElementsByTagName("input");
-                advUrlObjectArray.push({
-                    "url" : advancedDivs[i].getElementsByClassName("url-text")[0].value,
-                    "reload" : divInputTags[3].checked,
-                    "seconds" : divInputTags[2].value,
-                    "favIconUrl": advancedDivs[i].getElementsByClassName("icon")[0].src
-                });               
+		  var urlEl, reloadEl, secondsEl, loginEl, usernameCssEl, usernameEl, passwordCssEl, passwordEl, submitCssEl, iconEl;
+		  urlEl = advancedDivs[i].getElementsByClassName("url-text")[0];
+		  reloadEl = advancedDivs[i].querySelector("input[name='reload']");
+		  secondsEl = advancedDivs[i].querySelector("input[name='seconds']");
+		  loginEl = advancedDivs[i].querySelector("input[name='login']");
+		  iconEl = advancedDivs[i].getElementsByClassName("icon")[0];
+		var opts = {
+                    "url" : urlEl.value,
+		    "login": loginEl.checked,
+                    "reload" : reloadEl.checked,
+                    "seconds" : secondsEl.value,
+                    "favIconUrl": iconEl.src
+                }
+		if ( loginEl.checked ) {
+		  usernameCssEl = advancedDivs[i].querySelector("input[name='usernameCssSelector']");
+		  usernameEl = advancedDivs[i].querySelector("input[name='username']");
+		  passwordEl = advancedDivs[i].querySelector("input[name='password']");
+		  passwordCssEl = advancedDivs[i].querySelector("input[name='passwordCssSelector']");
+		  submitCssEl = advancedDivs[i].querySelector("input[name='submitCssSelector']");
+		  opts['usernameCssSelector']=usernameCssEl.value;
+		  opts['username']=usernameEl.value;
+		  opts['password']=passwordEl.value;
+		  opts['passwordCssSelector']=passwordCssEl.value;
+		  opts['submitCssSelector'] = submitCssEl.value;
+		}
+
+                advUrlObjectArray.push(opts);
            }
         }
         localStorage["revolverAdvSettings"] = JSON.stringify(advUrlObjectArray);
         bg.updateSettings();
-        status.innerHTML = "OPTIONS SAVED";
+        statusEl.innerHTML = "OPTIONS SAVED";
         setTimeout(function() {
-            status.innerHTML = "";
+            statusEl.innerHTML = "";
          }, 1000);
         callback();
 }
@@ -93,18 +114,42 @@ function restoreAdvancedOptions(){
 
 function generateAdvancedSettingsHtml(tab, saved){
     var advancedSettings = document.getElementsByClassName("adv-settings")[0],
-        enableHtmlChunk = '<div><input type="checkbox" class="enable" name="enable">',
+        enableHtmlChunk = '<div class="settings"><input type="checkbox" class="enable" name="enable">',
         iconAndUrlChunk = '<img class="icon" src='+tab.favIconUrl+'\><input class="url-text" type="text" value="'+tab.url+'">',
-        secondsChunk = '<p><label for="seconds">Seconds:</label> <input type="text" name="seconds" value="10" style="width:30px;">',
+        loginChunk = '<p><div><label for="login">Login:</label> <input type="checkbox" name="login">';    
+	loginChunk += '<div style="display: none;" id="loginWrapper">';
+	loginChunk += '<p><label class="inline" for="usernameCssSelector">Username CSS Selector:</label> <input type="text" name="usernameCssSelector" value="" style="width:30px;"></p>';
+	loginChunk += '<p><label class="inline" for="username">Username:</label> <input type="text" name="username" value="" style="width:30px;"></p>';
+
+	loginChunk += '<p><label class="inline" for="passwordCssSelector">Password CSS Selector:</label> <input type="text" name="passwordCssSelector" value="" style="width:30px;"></p>';
+       	loginChunk += '<p><label class="inline" for="password">Password:</label> <input type="password" name="password" value="" style="width:30px;"></p>';
+	loginChunk += '<p><label class="inline" for="submitCssSelector">Submit CSS Selector:</label> <input type="text" name="submitCssSelector" value="" style="width:30px;"></p>';
+	loginChunk += '</div></div></p>';
+
+        secondsChunk = '<label for="seconds">Seconds:</label> <input type="text" name="seconds" value="10" style="width:30px;">';
         reloadChunk = '<label class="inline" for="reload">Reload:</label> <input type="checkbox" name="reload"></p></div>';
         if(saved){ 
-            enableHtmlChunk = '<div><input type="checkbox" class="enable" name="enable" checked>';
-            secondsChunk = '<p><label for="seconds">Seconds:</label> <input type="text" name="seconds" value="'+tab.seconds+'" style="width:30px;">';
+            enableHtmlChunk = '<div class="settings"><input type="checkbox" class="enable" name="enable" checked>';
+
+	    if (tab.login) {
+		loginChunk = '<p><div><label for="login">Login:</label> <input type="checkbox" name="login" checked>';    
+		loginChunk += '<div style="display: block;" id="loginWrapper">';
+		loginChunk += '<p><label class="inline" for="usernameCssSelector">Username CSS Selector:</label> <input type="text" name="usernameCssSelector" value="'+tab.usernameCssSelector+'" style="width:30px;"></p>';
+		loginChunk += '<p><label class="inline" for="username">Username:</label> <input type="text" name="username" value="' + tab.username + '" style="width:30px;"></p>';
+
+		loginChunk += '<p><label class="inline" for="passwordCssSelector">Password CSS Selector:</label> <input type="text" name="passwordCssSelector" value="'+ tab.passwordCssSelector +'" style="width:30px;"></p>';
+		loginChunk += '<p><label class="inline" for="password">Password:</label> <input type="password" name="password" value="' + tab.password + '" style="width:30px;"></p>';
+		loginChunk += '<p><label class="inline" for="submitCssSelector">Submit CSS Selector:</label> <input type="text" name="submitCssSelector" value="' + tab.submitCssSelector + '" style="width:30px;"></p>';
+		loginChunk += '</div></div></p>';
+	    } 
+
+            secondsChunk = '<label for="seconds">Seconds:</label> <input type="text" name="seconds" value="'+tab.seconds+'" style="width:30px;">';
+
             if(tab.reload){
                 reloadChunk = '<label class="inline" for="reload">Reload:</label> <input type="checkbox" name="reload" checked></p></div>';    
             } 
         }
-        advancedSettings.innerHTML += enableHtmlChunk + iconAndUrlChunk + secondsChunk + reloadChunk;
+        advancedSettings.innerHTML += enableHtmlChunk + iconAndUrlChunk + loginChunk + secondsChunk + reloadChunk;
 };
 
 function getCurrentTabs(callback){
@@ -174,12 +219,28 @@ function createAdvancedSaveButton(){
     var parent = document.querySelector("#adv-settings"),
         advSaveButton = document.createElement("button"),
         advSaveIndicator = document.createElement("span");
+
+    var logins = document.querySelectorAll("input[name='login']");
+    logins.forEach( function(el) {
+		el.addEventListener("change", onChangeLoginSetting, false);
+    });
+
+
     advSaveButton.setAttribute("id", "adv-save");
     advSaveButton.innerText = "Save";
     advSaveButton.addEventListener("click", saveAllOptions);
     advSaveIndicator.setAttribute("id", "status3");
     parent.appendChild(advSaveButton);
     parent.appendChild(advSaveIndicator); 
+}
+
+function onChangeLoginSetting() {
+	var loginWrapper = this.parentElement.querySelector("#loginWrapper");
+	if ( this.checked ) {
+		loginWrapper.style.display="block";
+	} else {
+		loginWrapper.style.display="none";
+	}
 }
 
 // Load settings and add listeners:

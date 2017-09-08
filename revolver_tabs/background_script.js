@@ -4,7 +4,7 @@ var	tabsManifest = {},
 	advSettings = {},
 	windowStatus = {},
 	moverTimeOut = {},
-	listeners = {};	
+	listeners = {};
 // Runs initSettings after it checks for and migrates old settings.
 checkForAndMigrateOldSettings(function(){
 	initSettings();	
@@ -37,7 +37,7 @@ function stop(windowId) {
 }
 // Switch to the next tab.
 function activateTab(nextTab) {
-	grabTabSettings(nextTab.windowId, nextTab, function(tabSetting){
+	grabTabSettingsById(nextTab.windowId, nextTab, function(tabSetting){
 		if(tabSetting.reload && !include(settings.noRefreshList, nextTab.url) && nextTab.url.substring(0,19) != "chrome://extensions"){
 			chrome.tabs.reload(nextTab.id, function(){
 				chrome.tabs.update(nextTab.id, {selected: true}, function(){
@@ -84,6 +84,14 @@ function moveTab(timerWindowId) {
 		});
 	});
 }
+
+
+// Initiates a login sequence with the tab
+function doLoginWithTab(tabSettings, callback) {
+	chrome.tabs.sendMessage(tabSettings.id, tabSettings, function(response) {
+	    callback( response );
+	});
+}
 // **** Event Listeners ****
 // Creates all of the event listeners to start/stop the extension and ensure badge text is up to date.
 function addEventListeners(callback){
@@ -116,6 +124,14 @@ function addEventListeners(callback){
 		listeners.onUpdated = function onUpdated(tabId, changeObj, tab){
 			setBadgeStatusOnActiveWindow(tab);
 			if(changeObj.url) createTabsManifest(tab.windowId, function(){
+				//have we been logged out?
+			 	grabTabSettingsById( tab.windowId, tab, function( tabSettings ) {
+					if ( tabSettings.login && tabSettings.prevTab && tabSettings.prevTab.url !== tabSettings.url ) {
+						setTimeout(function() {
+							doLoginWithTab(tabSettings, function() {});
+						},  ( settings.loginTimeout * 1000 )); // in seconds
+					}
+				} );
 				return true;
 			});
 		}
@@ -242,14 +258,58 @@ function assignAdvancedSettings(tabs, callback) {
 	}
 	callback();
 }
+// If there are advanced settings for the URL, set them to the tab and check if we need to assign a login sequence.
+function assignAdvancedSettingsAndState(prevTabs, tabs, callback) {
+	function findPrevTab(tab) {
+		if ( !prevTabs ) {
+			return;
+		}
+		for (var i=0;i<prevTabs.length;i++) {
+			if (prevTabs[i].id === tab.id) {
+				return prevTabs[ i ];
+			}
+		}
+	}
+	for(var y=0;y<tabs.length;y++){
+		var prevTab = findPrevTab( tabs[ y ] );	
+		for(var i=0;i<advSettings.length;i++){
+			if( ( prevTab && prevTab.url === advSettings[i].url )  
+			||  ( advSettings[i].url === tabs[ y ].url  ) ) {
+				tabs[y].login = advSettings[i].login;
+				tabs[y].usernameCssSelector = advSettings[i].usernameCssSelector;
+				tabs[y].username = advSettings[i].username;
+				tabs[y].passwordCssSelector = advSettings[i].passwordCssSelector;
+				tabs[y].password = advSettings[i].password;
+				tabs[y].submitCssSelector = advSettings[i].submitCssSelector;
+
+
+				tabs[y].reload = advSettings[i].reload;
+				tabs[y].seconds = advSettings[i].seconds;
+				tabs[y].prevTab = prevTab;
+			}
+		}	
+	}
+	callback();
+}
+
+
 // Get the settings for a tab.
-function grabTabSettings(windowId, tab, callback) {
+function grabTabSettings(windowId, tab, callback) {	
 	for(var i=0; i<tabsManifest[windowId].length; i++){
 		if(tabsManifest[windowId][i].url === tab.url){
 			return callback(tabsManifest[windowId][i]);
 		}
 	}
 }
+// Get the settings for a tab.
+function grabTabSettingsById(windowId, tab, callback) {	
+	for(var i=0; i<tabsManifest[windowId].length; i++){
+		if(tabsManifest[windowId][i].id === tab.id){
+			return callback(tabsManifest[windowId][i]);
+		}
+	}
+}
+
 // This will convert users old settings into the new object format and remove the old ones.
 function checkForAndMigrateOldSettings(callback){
 	if(localStorage["revolverSettings"]) callback();
@@ -273,8 +333,10 @@ function createBaseSettingsIfTheyDontExist(){
 	if(!localStorage["revolverSettings"]){
 		settings.seconds = 15;
 		settings.reload = false;
+		settings.login = false;
 		settings.inactive = false;
 		settings.autoStart = false;
+		settings.loginTimeout = 5;
 		localStorage["revolverSettings"] = JSON.stringify(settings);
 	} else {
 		settings = JSON.parse(localStorage["revolverSettings"]);
@@ -300,12 +362,16 @@ function assignSettingsToTabs(tabs, callback){
 		});	
 	});
 }
+
 // Create the tabs object with settings in tabsManifest object.
 function createTabsManifest(windowId, callback){
 	chrome.tabs.query({"windowId" : windowId}, function(tabs){
-		assignSettingsToTabs(tabs, function(){
-			tabsManifest[windowId] = tabs;
-			callback();
+		var prevTabs = tabsManifest[windowId];
+		assignBaseSettings(tabs, function(){
+			assignAdvancedSettingsAndState(prevTabs, tabs, function(){
+				tabsManifest[ windowId ] = tabs;
+				callback();
+			});	
 		});
 	});
 }

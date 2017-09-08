@@ -10,6 +10,15 @@
       "128": "revolver_t_128.png",
       "48": "revolver_t_48.png"
    },
+   "content_scripts": [
+    {
+      "matches": [
+           "http://*/*",
+           "https://*/*"
+      ],
+      "js": ["content_script.js"]
+    }
+  ],
    "name": "Revolver - Tabs",
    "options_page": "options.html",
    "permissions": [ "tabs", "idle" ],
