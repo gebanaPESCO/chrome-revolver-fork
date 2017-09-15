@@ -1,15 +1,36 @@
 chrome.runtime.onMessage.addListener(function(data, sender, sendResponse) {
-	 //try to do login
-	 var usernameEl, passwordEl, submitEl;
-	 usernameEl = document.querySelector(data.usernameCssSelector);
-	 passwordEl = document.querySelector(data.passwordCssSelector);
-	 submitEl = document.querySelector(data.submitCssSelector);
-	 if ( usernameEl && passwordEl && submitEl ) {
-		usernameEl.value = data.username;
-		passwordEl.value = data.password;
-		submitEl.click();
-		sendResponse( true );
-    		return;
+	 var usernameEl, passwordEl, accountNoEl, submitEl, settings = data.settings;
+	 function makeLoginEls() {
+		 usernameEl = document.querySelector(settings.usernameCssSelector);
+		 passwordEl = document.querySelector(settings.passwordCssSelector);
+		 submitEl = document.querySelector(settings.submitCssSelector);
 	}
-	sendResponse( false );
+	function checkCanLogin() {
+		makeLoginEls();
+		return usernameEl && passwordEl && submitEl;
+	}
+
+	 if ( data.type === "LOGIN" ) {
+		 if ( checkCanLogin() ) {
+			usernameEl.value = settings.username;
+			passwordEl.value = settings.password;
+			if ( settings.accountNoCssSelector !== "" ) {
+				accountNoEl = document.querySelector( settings.accountNoCssSelector );
+				accountNoEl.value = settings.accountNo;
+			}
+			submitEl.click();
+			sendResponse( true );
+			return;
+		}
+		sendResponse( false );
+	} else if ( data.type === "REDIRECT" ) {
+		 if ( settings.redirectUrl !== "" ) {
+			 window.location.replace( settings.redirectUrl );
+			 sendResponse( true );
+			 return;
+		 }
+		sendResponse( false );
+	} else if ( data.type === "CHECK" ) {
+		sendResponse( checkCanLogin() );
+	}
 });

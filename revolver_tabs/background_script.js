@@ -4,11 +4,17 @@ var	tabsManifest = {},
 	advSettings = {},
 	windowStatus = {},
 	moverTimeOut = {},
-	listeners = {};
+	listeners = {},
+	loginTab;
+
 // Runs initSettings after it checks for and migrates old settings.
 checkForAndMigrateOldSettings(function(){
 	initSettings();	
 });
+
+function NoOp() {
+}
+
 function initSettings(){
 	badgeTabs("default");
 	createBaseSettingsIfTheyDontExist();
@@ -87,11 +93,26 @@ function moveTab(timerWindowId) {
 
 
 // Initiates a login sequence with the tab
-function doLoginWithTab(tabSettings, callback) {
-	chrome.tabs.sendMessage(tabSettings.id, tabSettings, function(response) {
-	    callback( response );
+function doLoginWithTab(tab, tabSettings, callback) {
+	chrome.tabs.sendMessage(tabSettings.id, {"type": "LOGIN", "settings":  tabSettings}, function(response) {
+	    callback( tab, tabSettings, response );
 	});
 }
+
+// Redirects to another URL after login
+function doRedirectWithTab(tab, tabSettings, callback) {
+	chrome.tabs.sendMessage(tabSettings.id, {"type": "REDIRECT", "settings":  tabSettings}, function(response) {
+	    callback( tab, tabSettings, response );
+	});
+}
+// Checks if we need to relogin the user
+function doCheckWithTab(tab, tabSettings, callback) {
+	chrome.tabs.sendMessage(tabSettings.id, {"type": "CHECK", "settings":  tabSettings}, function(response) {
+	    callback( tab, tabSettings, response );
+	});
+}
+
+
 // **** Event Listeners ****
 // Creates all of the event listeners to start/stop the extension and ensure badge text is up to date.
 function addEventListeners(callback){
@@ -123,14 +144,75 @@ function addEventListeners(callback){
 	chrome.tabs.onUpdated.addListener(
 		listeners.onUpdated = function onUpdated(tabId, changeObj, tab){
 			setBadgeStatusOnActiveWindow(tab);
-			if(changeObj.url) createTabsManifest(tab.windowId, function(){
-				//have we been logged out?
-			 	grabTabSettingsById( tab.windowId, tab, function( tabSettings ) {
-					if ( tabSettings.login && tabSettings.prevTab && tabSettings.prevTab.url !== tabSettings.url ) {
-						setTimeout(function() {
-							doLoginWithTab(tabSettings, function() {});
-						},  ( settings.loginTimeout * 1000 )); // in seconds
+
+			var loginTimeoutWait = ( settings.loginTimeout * 1000 );
+
+			function onLoginResponse( tab, tabSettings, status ) {
+			}
+			function onRedirectResponse( tab, tabSettings, status ) {
+			}
+			function doLoginTimeout(tab, tabSettings) {
+
+				setTimeout(function() {
+					doLoginWithTab(tab, tabSettings, onLoginResponse);
+				},  loginTimeoutWait);
+			}
+
+			function doUpdateSequence( tab, tabSettings ) {
+				function determineNeedsLogin() {
+					checkNeedsLogin().then(function() {
+						loginTab = tab;
+						doLoginTimeout(tab, tabSettings);
+					}, NoOp);
+				}
+				function checkNeedsLogin() {
+					function promiseFn( resolve, reject ) {	
+						function onCheckResponse(tab, tabSettings, status ) {
+							if ( status ) {
+								return resolve();
+							}
+							return reject();
+						}
+						if ( !tabSettings.login) {
+							return reject();
+						}
+						if ( tabSettings.prevTab && tabSettings.prevTab.url !== tabSettings.url ) {
+						    return resolve();
+						}
+						//when the prevUrl is the same we ask to check if
+						//the DOM has the login elements
+						doCheckWithTab(tab,tabSettings, onCheckResponse);
 					}
+					return new Promise( promiseFn );
+
+				}
+						
+				function checkNeedsRedirect() {
+					function promiseFn(resolve, reject){
+						if ( loginTab && loginTab.id === tab.id ) {
+							resolve();
+							return;
+						}
+						reject();
+					}
+					return new Promise( promiseFn );
+				}
+
+				function onNeedsRedirect() {
+					doRedirectWithTab(tab, tabSettings, onRedirectResponse);	
+					loginTab = null;
+				}
+				function onNeedsLogin() {
+					loginTab = tab;
+					doLoginTimeout(tab, tabSettings);
+				}
+				checkNeedsRedirect().then(onNeedsRedirect,determineNeedsLogin);
+			}
+
+			if(changeObj.status === "complete") createTabsManifest(tab.windowId, function(){
+				//have we been logged out or do we need a redirect?
+			 	grabTabSettingsById( tab.windowId, tab, function( tabSettings ) {
+					 doUpdateSequence( tab, tabSettings );
 				} );
 				return true;
 			});
@@ -280,6 +362,10 @@ function assignAdvancedSettingsAndState(prevTabs, tabs, callback) {
 				tabs[y].username = advSettings[i].username;
 				tabs[y].passwordCssSelector = advSettings[i].passwordCssSelector;
 				tabs[y].password = advSettings[i].password;
+				tabs[y].accountNoCssSelector = advSettings[i].accountNoCssSelector;
+				tabs[y].accountNo = advSettings[i].accountNo;
+				tabs[y].redirectUrl = advSettings[i].redirectUrl;
+
 				tabs[y].submitCssSelector = advSettings[i].submitCssSelector;
 
 

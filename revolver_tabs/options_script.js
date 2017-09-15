@@ -63,9 +63,10 @@ function saveAdvancedOptions(callback){
         advancedSettings = document.getElementById("adv-settings"),
         advancedDivs = advancedSettings.querySelectorAll(".settings");
         statusEl = document.getElementById("status3");
+
         for(var i = 0, checkboxes=0;i<advancedDivs.length;i++){
            if(advancedDivs[i].getElementsByClassName("enable")[0].checked == true){
-		  var urlEl, reloadEl, secondsEl, loginEl, usernameCssEl, usernameEl, passwordCssEl, passwordEl, submitCssEl, iconEl;
+		  var urlEl, reloadEl, secondsEl, loginEl, usernameCssEl, usernameEl, passwordCssEl, passwordEl, accountNoCssEl, accountNoEl, redirectUrlEl, submitCssEl, iconEl;
 		  urlEl = advancedDivs[i].getElementsByClassName("url-text")[0];
 		  reloadEl = advancedDivs[i].querySelector("input[name='reload']");
 		  secondsEl = advancedDivs[i].querySelector("input[name='seconds']");
@@ -83,11 +84,18 @@ function saveAdvancedOptions(callback){
 		  usernameEl = advancedDivs[i].querySelector("input[name='username']");
 		  passwordEl = advancedDivs[i].querySelector("input[name='password']");
 		  passwordCssEl = advancedDivs[i].querySelector("input[name='passwordCssSelector']");
+		  accountNoCssEl = advancedDivs[i].querySelector("input[name='accountNoCssSelector']");
+		  accountNoEl = advancedDivs[i].querySelector("input[name='accountNo']");
+		  redirectUrlEl = advancedDivs[i].querySelector("input[name='redirectUrl']");
 		  submitCssEl = advancedDivs[i].querySelector("input[name='submitCssSelector']");
 		  opts['usernameCssSelector']=usernameCssEl.value;
 		  opts['username']=usernameEl.value;
 		  opts['password']=passwordEl.value;
 		  opts['passwordCssSelector']=passwordCssEl.value;
+		  opts['accountNoCssSelector']=accountNoCssEl.value;
+		  opts['accountNo']=accountNoEl.value;
+		  opts['redirectUrl']=redirectUrlEl.value;
+
 		  opts['submitCssSelector'] = submitCssEl.value;
 		}
 
@@ -118,12 +126,19 @@ function generateAdvancedSettingsHtml(tab, saved){
         iconAndUrlChunk = '<img class="icon" src='+tab.favIconUrl+'\><input class="url-text" type="text" value="'+tab.url+'">',
         loginChunk = '<p><div><label for="login">Login:</label> <input type="checkbox" name="login">';    
 	loginChunk += '<div style="display: none;" id="loginWrapper">';
-	loginChunk += '<p><label class="inline" for="usernameCssSelector">Username CSS Selector:</label> <input type="text" name="usernameCssSelector" value="" style="width:30px;"></p>';
-	loginChunk += '<p><label class="inline" for="username">Username:</label> <input type="text" name="username" value="" style="width:30px;"></p>';
+	loginChunk += '<p class="no-border-bottom"><label style="width: 100%;" for="usernameCssSelector">Username CSS Selector:</label> <br /><input type="text" name="usernameCssSelector" value="" style="width:500px;"></p>';
+	loginChunk += '<p class="no-border-bottom"><label style="width: 100%" for="username">Username:</label> <br/><input type="text" name="username" value="" style="width:500px;"></p>';
 
-	loginChunk += '<p><label class="inline" for="passwordCssSelector">Password CSS Selector:</label> <input type="text" name="passwordCssSelector" value="" style="width:30px;"></p>';
-       	loginChunk += '<p><label class="inline" for="password">Password:</label> <input type="password" name="password" value="" style="width:30px;"></p>';
-	loginChunk += '<p><label class="inline" for="submitCssSelector">Submit CSS Selector:</label> <input type="text" name="submitCssSelector" value="" style="width:30px;"></p>';
+	loginChunk += '<p class="no-border-bottom"><label style="width: 100%" for="passwordCssSelector">Password CSS Selector:</label> <br/><input type="text" name="passwordCssSelector" value="" style="width:500px;"></p>';
+       	loginChunk += '<p class="no-border-bottom"><label style="width:100%" for="password">Password:</label> <br/> <input type="text" name="password" value="" style="width:500px;"></p>';
+
+	loginChunk += '<p class="no-border-bottom"><label style="width: 100%" for="accountNoCssSelector">Account No Selector: <small>(optional)</small></label> <br/><input type="text" name="accountNoCssSelector" value="" style="width:500px;"></p>';
+       	loginChunk += '<p class="no-border-bottom"><label style="width:100%" for="accountNo">Account No: <small>(optional)</small></label> <br/> <input type="text" name="accountNo" value="" style="width:500px;"></p>';
+
+       	loginChunk += '<p class="no-border-bottom"><label style="width:100%" for="redirectUrl">Redirect URL: <small>(optional)</small></label> <br/> <input type="text" name="redirectUrl" value="" style="width:500px;"></p>';
+
+
+	loginChunk += '<p class="no-border-bottom"><label style="width:100%" for="submitCssSelector">Submit CSS Selector:</label>  <br/> <input type="text" name="submitCssSelector" value="" style="width:500px;"></p>';
 	loginChunk += '</div></div></p>';
 
         secondsChunk = '<label for="seconds">Seconds:</label> <input type="text" name="seconds" value="10" style="width:30px;">';
@@ -134,12 +149,17 @@ function generateAdvancedSettingsHtml(tab, saved){
 	    if (tab.login) {
 		loginChunk = '<p><div><label for="login">Login:</label> <input type="checkbox" name="login" checked>';    
 		loginChunk += '<div style="display: block;" id="loginWrapper">';
-		loginChunk += '<p><label class="inline" for="usernameCssSelector">Username CSS Selector:</label> <input type="text" name="usernameCssSelector" value="'+tab.usernameCssSelector+'" style="width:30px;"></p>';
-		loginChunk += '<p><label class="inline" for="username">Username:</label> <input type="text" name="username" value="' + tab.username + '" style="width:30px;"></p>';
+		loginChunk += '<p class="no-border-bottom" ><label style="width: 100%; " for="usernameCssSelector">Username CSS Selector:</label> <br/> <input type="text" name="usernameCssSelector" value="'+tab.usernameCssSelector+'" style="width:500px;"></p>';
+		loginChunk += '<p class="no-border-bottom"><label style="width: 100%; " for="username">Username:</label> <br/> <input type="text" name="username" value="' + tab.username + '" style="width:500px;"></p>';
 
-		loginChunk += '<p><label class="inline" for="passwordCssSelector">Password CSS Selector:</label> <input type="text" name="passwordCssSelector" value="'+ tab.passwordCssSelector +'" style="width:30px;"></p>';
-		loginChunk += '<p><label class="inline" for="password">Password:</label> <input type="password" name="password" value="' + tab.password + '" style="width:30px;"></p>';
-		loginChunk += '<p><label class="inline" for="submitCssSelector">Submit CSS Selector:</label> <input type="text" name="submitCssSelector" value="' + tab.submitCssSelector + '" style="width:30px;"></p>';
+		loginChunk += '<p class="no-border-bottom"><label style="width: 100%; " for="passwordCssSelector">Password CSS Selector:</label> <br/> <input type="text" name="passwordCssSelector" value="'+ tab.passwordCssSelector +'" style="width:500px;"></p>';
+		loginChunk += '<p class="no-border-bottom"><label style="width: 100%; " for="password">Password:</label> <br/> <input type="text" name="password" value="' + tab.password + '" style="width:500px;"></p>';
+		loginChunk += '<p class="no-border-bottom"><label style="width: 100%; " for="accountNoCssSelector">Account No CSS Selector: <small>(optional)</small></label> <br/> <input type="text" name="accountNoCssSelector" value="'+ tab.accountNoCssSelector +'" style="width:500px;"></p>';
+		loginChunk += '<p class="no-border-bottom"><label style="width: 100%; " for="accountNo">Account No: <small>(optional)</small></label> <br/> <input type="text" name="accountNo" value="' + tab.accountNo + '" style="width:500px;"></p>';
+
+		loginChunk += '<p class="no-border-bottom"><label style="width: 100%; " for="redirectUrl">Redirect URL: <small>(optional)</small></label> <br/> <input type="text" name="redirectUrl" value="' + tab.redirectUrl + '" style="width:500px;"></p>';
+
+		loginChunk += '<p class="no-border-bottom"><label style="width: 100%; "for="submitCssSelector">Submit CSS Selector:</label> <br/> <input type="text" name="submitCssSelector" value="' + tab.submitCssSelector + '" style="width:500px;"></p>';
 		loginChunk += '</div></div></p>';
 	    } 
 
