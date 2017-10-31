@@ -66,7 +66,7 @@ function saveAdvancedOptions(callback){
 
         for(var i = 0, checkboxes=0;i<advancedDivs.length;i++){
            if(advancedDivs[i].getElementsByClassName("enable")[0].checked == true){
-		  var urlEl, reloadEl, secondsEl, loginEl, usernameCssEl, usernameEl, passwordCssEl, passwordEl, accountNoCssEl, accountNoEl, redirectUrlEl, submitCssEl, iconEl;
+		  var urlEl, reloadEl, secondsEl, loginEl, usernameCssEl, usernameEl, passwordCssEl, passwordEl, accountNoCssEl, accountNoEl, redirectUrlEl, submitCssEl, iconEl, detectURLParamsEl;
 		  urlEl = advancedDivs[i].getElementsByClassName("url-text")[0];
 		  reloadEl = advancedDivs[i].querySelector("input[name='reload']");
 		  secondsEl = advancedDivs[i].querySelector("input[name='seconds']");
@@ -88,6 +88,7 @@ function saveAdvancedOptions(callback){
 		  accountNoEl = advancedDivs[i].querySelector("input[name='accountNo']");
 		  redirectUrlEl = advancedDivs[i].querySelector("input[name='redirectUrl']");
 		  submitCssEl = advancedDivs[i].querySelector("input[name='submitCssSelector']");
+		  detectURLParamsEl = advancedDivs[i].querySelector("input[name='detectURLParams']");
 		  opts['usernameCssSelector']=usernameCssEl.value;
 		  opts['username']=usernameEl.value;
 		  opts['password']=passwordEl.value;
@@ -95,6 +96,7 @@ function saveAdvancedOptions(callback){
 		  opts['accountNoCssSelector']=accountNoCssEl.value;
 		  opts['accountNo']=accountNoEl.value;
 		  opts['redirectUrl']=redirectUrlEl.value;
+		  opts['detectURLParams']=detectURLParamsEl.checked;
 
 		  opts['submitCssSelector'] = submitCssEl.value;
 		}
@@ -139,6 +141,8 @@ function generateAdvancedSettingsHtml(tab, saved){
 
 
 	loginChunk += '<p class="no-border-bottom"><label style="width:100%" for="submitCssSelector">Submit CSS Selector:</label>  <br/> <input type="text" name="submitCssSelector" value="" style="width:500px;"></p>';
+
+        loginChunk += '<p class="no-border-bottom"><label for="detectURLParams">Detect URL Params:</label> <input type="checkbox" name="detectURLParams">';
 	loginChunk += '</div></div></p>';
 
         secondsChunk = '<label for="seconds">Seconds:</label> <input type="text" name="seconds" value="10" style="width:30px;">';
@@ -160,6 +164,12 @@ function generateAdvancedSettingsHtml(tab, saved){
 		loginChunk += '<p class="no-border-bottom"><label style="width: 100%; " for="redirectUrl">Redirect URL: <small>(optional)</small></label> <br/> <input type="text" name="redirectUrl" value="' + tab.redirectUrl + '" style="width:500px;"></p>';
 
 		loginChunk += '<p class="no-border-bottom"><label style="width: 100%; "for="submitCssSelector">Submit CSS Selector:</label> <br/> <input type="text" name="submitCssSelector" value="' + tab.submitCssSelector + '" style="width:500px;"></p>';
+
+        	if ( tab.detectURLParams ) {
+			loginChunk += '<p class="no-border-bottom"><label for="detectURLParams">Detect URL Params:</label> <input type="checkbox" name="detectURLParams" checked></p>';
+		} else {
+			loginChunk += '<p class="no-border-bottom"><label for="detectURLParams">Detect URL Params:</label> <input type="checkbox" name="detectURLParams"></p>';
+		}
 		loginChunk += '</div></div></p>';
 	    } 
 

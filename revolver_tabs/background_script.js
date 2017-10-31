@@ -57,6 +57,16 @@ function activateTab(nextTab) {
 		}	
 	});
 }
+
+// compare a URL without query string and hash
+//
+function compareURL(detectURLParams, tab1, tab2) {
+	if ( detectURLParams ) {
+		return stripURL(tab1.url)===stripURL(tab2.url);
+	}
+	return tab1.url===tab2.url;
+}
+
 // Call moveTab if the user isn't interacting with the machine
 function moveTabIfIdle(timerWindowId, tabTimeout) {
 	if (settings.inactive) {
@@ -94,6 +104,7 @@ function moveTab(timerWindowId) {
 
 // Initiates a login sequence with the tab
 function doLoginWithTab(tab, tabSettings, callback) {
+	console.log("DOING LOGIN WITH tabSettings", tabSettings);
 	chrome.tabs.sendMessage(tabSettings.id, {"type": "LOGIN", "settings":  tabSettings}, function(response) {
 	    callback( tab, tabSettings, response );
 	});
@@ -101,12 +112,14 @@ function doLoginWithTab(tab, tabSettings, callback) {
 
 // Redirects to another URL after login
 function doRedirectWithTab(tab, tabSettings, callback) {
+	console.log("DOING REDIRECT WITH tabSettings", tabSettings);
 	chrome.tabs.sendMessage(tabSettings.id, {"type": "REDIRECT", "settings":  tabSettings}, function(response) {
 	    callback( tab, tabSettings, response );
 	});
 }
 // Checks if we need to relogin the user
 function doCheckWithTab(tab, tabSettings, callback) {
+	console.log("DOING CHECK WITH tabSettings", tabSettings);
 	chrome.tabs.sendMessage(tabSettings.id, {"type": "CHECK", "settings":  tabSettings}, function(response) {
 	    callback( tab, tabSettings, response );
 	});
@@ -161,7 +174,7 @@ function addEventListeners(callback){
 			function doUpdateSequence( tab, tabSettings ) {
 				function determineNeedsLogin() {
 					checkNeedsLogin().then(function() {
-						loginTab = tab;
+						loginTab = tabSettings;
 						doLoginTimeout(tab, tabSettings);
 					}, NoOp);
 				}
@@ -176,7 +189,7 @@ function addEventListeners(callback){
 						if ( !tabSettings.login) {
 							return reject();
 						}
-						if ( tabSettings.prevTab && tabSettings.prevTab.url !== tabSettings.url ) {
+						if ( tabSettings.prevTab && !compareURL(tabSettings.detectURLParams, tabSettings.prevTab, tabSettings)) {
 						    return resolve();
 						}
 						//when the prevUrl is the same we ask to check if
@@ -199,11 +212,11 @@ function addEventListeners(callback){
 				}
 
 				function onNeedsRedirect() {
-					doRedirectWithTab(tab, tabSettings, onRedirectResponse);	
+					doRedirectWithTab(tab, loginTab, onRedirectResponse);	
 					loginTab = null;
 				}
 				function onNeedsLogin() {
-					loginTab = tab;
+					loginTab = tabSettings;
 					doLoginTimeout(tab, tabSettings);
 				}
 				checkNeedsRedirect().then(onNeedsRedirect,determineNeedsLogin);
@@ -262,6 +275,14 @@ function setBadgeStatusOnActiveWindow(tab){
 	else if (windowStatus[tab.windowId] === "pause") badgeTabs("pause", tab.windowId);
 	else badgeTabs("", tab.windowId);
 }
+
+// strip a URL for no query string or hash
+function stripURL(url) {
+  var withoutQs =  url.split("?")[0];
+  var withoutHash = withoutQs.split("#"); 
+  return withoutHash[ 0 ];
+}
+
 //Change the badge icon/background color.  
 function badgeTabs(text, windowId) {
 	if(text === "default") {
@@ -332,7 +353,7 @@ function assignBaseSettings(tabs, callback) {
 function assignAdvancedSettings(tabs, callback) {
 	for(var y=0;y<tabs.length;y++){
 		for(var i=0;i<advSettings.length;i++){
-			if(advSettings[i].url == tabs[y].url) {
+			if(compareURL(advSettings[i].detectURLParams, advSettings[i], tabs[y])) {
 				tabs[y].reload = advSettings[i].reload;
 				tabs[y].seconds = advSettings[i].seconds;
 			}
@@ -355,8 +376,9 @@ function assignAdvancedSettingsAndState(prevTabs, tabs, callback) {
 	for(var y=0;y<tabs.length;y++){
 		var prevTab = findPrevTab( tabs[ y ] );	
 		for(var i=0;i<advSettings.length;i++){
-			if( ( prevTab && prevTab.url === advSettings[i].url )  
-			||  ( advSettings[i].url === tabs[ y ].url  ) ) {
+			var settings = advSettings[ i ];
+			if( ( prevTab && compareURL(settings.detectURLParams, prevTab, settings) )
+			||  ( compareURL(settings.detectURLParams, tabs[ y ], settings ) ) ) {
 				tabs[y].login = advSettings[i].login;
 				tabs[y].usernameCssSelector = advSettings[i].usernameCssSelector;
 				tabs[y].username = advSettings[i].username;
@@ -367,6 +389,7 @@ function assignAdvancedSettingsAndState(prevTabs, tabs, callback) {
 				tabs[y].redirectUrl = advSettings[i].redirectUrl;
 
 				tabs[y].submitCssSelector = advSettings[i].submitCssSelector;
+				tabs[y].detectURLParams = advSettings[i].detectURLParams;
 
 
 				tabs[y].reload = advSettings[i].reload;
@@ -382,8 +405,9 @@ function assignAdvancedSettingsAndState(prevTabs, tabs, callback) {
 // Get the settings for a tab.
 function grabTabSettings(windowId, tab, callback) {	
 	for(var i=0; i<tabsManifest[windowId].length; i++){
-		if(tabsManifest[windowId][i].url === tab.url){
-			return callback(tabsManifest[windowId][i]);
+		var tabManifest = tabsManifest[windowId][i];
+		if(compareURL(tabManifest.detectURLParams,tab,tabManifest)){
+			return callback(tabManifest);
 		}
 	}
 }
@@ -443,7 +467,7 @@ function autoStartIfEnabled(windowId){
 // Go through each tab and assign settings to them.
 function assignSettingsToTabs(tabs, callback){
 	assignBaseSettings(tabs, function(){
-		assignAdvancedSettings(tabs, function(){
+		assignAdvancedSettingsAndState(tabs, tabs, function(){
 			callback();
 		});	
 	});
@@ -467,7 +491,7 @@ function updateSettings(){
 	advSettings = JSON.parse(localStorage["revolverAdvSettings"]);
 	getAllTabsInCurrentWindow(function(tabs){
 		assignBaseSettings(tabs, function(){
-			assignAdvancedSettings(tabs, function(){
+			assignAdvancedSettingsAndState(tabs, tabs, function(){
 				createTabsManifest(tabs[0].windowId, function(){
 					return true;	
 				});
