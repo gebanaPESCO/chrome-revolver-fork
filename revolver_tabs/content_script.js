@@ -1,5 +1,6 @@
 chrome.runtime.onMessage.addListener(function(data, sender, sendResponse) {
 	 var usernameEl, passwordEl, accountNoEl, submitEl, settings = data.settings;
+	 console.log("received data ", data);
 	 function makeLoginEls() {
 		 usernameEl = document.querySelector(settings.usernameCssSelector);
 		 passwordEl = document.querySelector(settings.passwordCssSelector);
@@ -9,7 +10,8 @@ chrome.runtime.onMessage.addListener(function(data, sender, sendResponse) {
 		makeLoginEls();
 		return usernameEl && passwordEl && submitEl;
 	}
-
+	// wait for DOM next tick
+	setTimeout(function() {
 	 if ( data.type === "LOGIN" ) {
 		 if ( checkCanLogin() ) {
 			usernameEl.value = settings.username;
@@ -33,4 +35,5 @@ chrome.runtime.onMessage.addListener(function(data, sender, sendResponse) {
 	} else if ( data.type === "CHECK" ) {
 		sendResponse( checkCanLogin() );
 	}
+     }, 0);
 });
