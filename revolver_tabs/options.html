@@ -34,6 +34,8 @@ img.icon {height:15px;width:15px;margin-right:5px}
 <p><label for="noRefreshList">Blacklist for URLs that should not be reloaded:</label> <textarea name="noRefreshList" id="noRefreshList" rows="10" cols="80"></textarea><span class="example">The list should have full URLs, each separated by a new line</span></p>
 <p><label for="inactive">Rotate only when inactive:</label> <input type="checkbox" name="inactive" id="inactive"><span class="example"><strong>Rotation will pause</strong> if the browser has been interacted with within 15 seconds.</span></p>
 <p><label for="loginTimeout">How long to wait for account to login:</label> <input type="number" name="loginTimeout" id="loginTimeout"><span class="example"><strong>Rotation will pause</strong> for this time until the account is logged in </span></p>
+<p><label for="redirectTimeout">How long to wait for redirect upon login:</label> <input type="number" name="redirectTimeout" id="redirectTimeout"><span class="example"></p>
+
 <button id="save">Save</button><span id="status"></span>
 </div>
 <div id="adv-settings" class="adv-settings" style="margin-top:10px">

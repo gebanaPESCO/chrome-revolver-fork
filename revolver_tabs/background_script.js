@@ -4,8 +4,7 @@ var	tabsManifest = {},
 	advSettings = {},
 	windowStatus = {},
 	moverTimeOut = {},
-	listeners = {},
-	loginTab;
+	listeners = {};
 
 // Runs initSettings after it checks for and migrates old settings.
 checkForAndMigrateOldSettings(function(){
@@ -159,24 +158,38 @@ function addEventListeners(callback){
 			setBadgeStatusOnActiveWindow(tab);
 
 			var loginTimeoutWait = ( settings.loginTimeout * 1000 );
+			var redirectTimeoutWait = ( settings.redirectTimeout * 1000 );
 
 			function onLoginResponse( tab, tabSettings, status ) {
+				doRedirectTimeout(tab, tabSettings);	
 			}
 			function onRedirectResponse( tab, tabSettings, status ) {
 			}
 			function doLoginTimeout(tab, tabSettings) {
-
 				setTimeout(function() {
+					if (windowStatus[tab.windowId]!=="on"){
+						return;
+					}
+
 					doLoginWithTab(tab, tabSettings, onLoginResponse);
 				},  loginTimeoutWait);
 			}
+			function doRedirectTimeout(tab, tabSettings) {
+				setTimeout(function() {
+					if (windowStatus[tab.windowId]!=="on"){
+						return;
+					}
+
+					if (tabSettings.redirectUrl!==""){
+						doRedirectWithTab(tab, tabSettings, onRedirectResponse);
+					}
+				},  redirectTimeoutWait);
+			}
+
 
 			function doUpdateSequence( tab, tabSettings ) {
-				function determineNeedsLogin() {
-					checkNeedsLogin().then(function() {
-						loginTab = tabSettings;
-						doLoginTimeout(tab, tabSettings);
-					}, NoOp);
+				if (windowStatus[tab.windowId]!=="on"){
+					return;
 				}
 				function checkNeedsLogin() {
 					function promiseFn( resolve, reject ) {	
@@ -199,27 +212,9 @@ function addEventListeners(callback){
 					return new Promise( promiseFn );
 
 				}
-						
-				function checkNeedsRedirect() {
-					function promiseFn(resolve, reject){
-						if ( loginTab && loginTab.id === tab.id ) {
-							resolve();
-							return;
-						}
-						reject();
-					}
-					return new Promise( promiseFn );
-				}
-
-				function onNeedsRedirect() {
-					doRedirectWithTab(tab, loginTab, onRedirectResponse);	
-					loginTab = null;
-				}
-				function onNeedsLogin() {
-					loginTab = tabSettings;
+				checkNeedsLogin().then(function() {
 					doLoginTimeout(tab, tabSettings);
-				}
-				checkNeedsRedirect().then(onNeedsRedirect,determineNeedsLogin);
+				}, NoOp);
 			}
 
 			if(changeObj.status === "complete") createTabsManifest(tab.windowId, function(){
@@ -499,3 +494,4 @@ function updateSettings(){
 		});
 	});
 }
+

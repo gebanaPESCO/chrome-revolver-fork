@@ -15,9 +15,11 @@ function saveBaseOptions(callback) {
     appSettings.seconds = document.getElementById("seconds").value;
     bg.timeDelay = (document.getElementById("seconds").value*1000);
     bg.loginTimeout = (document.getElementById("loginTimeout").value*1000);
+    bg.redirectTimeout = (document.getElementById("redirectTimeout").value*1000);
     getCheckedStatus(appSettings, "inactive");
     getCheckedStatus(appSettings, "autostart");
     appSettings.loginTimeout = parseInt(document.getElementById("loginTimeout").value);
+    appSettings.redirectTimeout = parseInt(document.getElementById("redirectTimeout").value);
     appSettings.noRefreshList = document.getElementById('noRefreshList').value.split('\n');
     bg.noRefreshList = document.getElementById('noRefreshList').value.split('\n');  
     statusEl.innerHTML = "OPTIONS SAVED";
@@ -43,6 +45,7 @@ function restoreOptions() {
     if (localStorage["revolverSettings"]) appSettings = JSON.parse(localStorage["revolverSettings"]);
         document.getElementById("seconds").value = (appSettings.seconds || 10);
         document.getElementById("loginTimeout").value = (appSettings.loginTimeout || 5);
+        document.getElementById("redirectTimeout").value = (appSettings.redirectTimeout || 10);
         document.getElementById("reload").checked = (appSettings.reload || false);
         document.getElementById("inactive").checked = (appSettings.inactive || false);
         document.getElementById("autostart").checked = (appSettings.autostart || false);
